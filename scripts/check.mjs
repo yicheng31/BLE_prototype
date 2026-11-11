@@ -11,7 +11,7 @@ function scan(directory) {
     else if (/\.(?:mjs|js)$/.test(filename)) files.push(filename);
   }
 }
-for (const folder of ["public/js", "scripts", "tests"]) {
+for (const folder of ["frontend/public/js", "backend/src", "scripts", "backend/scripts", "frontend/tests", "backend/tests"]) {
   if (fs.existsSync(path.join(root, folder))) scan(path.join(root, folder));
 }
 for (const filename of files) {
@@ -22,15 +22,15 @@ for (const filename of files) {
     if (!fs.existsSync(path.resolve(path.dirname(filename), specifier))) throw new Error(`Missing module: ${specifier} in ${filename}`);
   }
 }
-const html = fs.readFileSync(path.join(root, "public/index.html"), "utf8");
+const html = fs.readFileSync(path.join(root, "frontend/public/index.html"), "utf8");
 for (const [, asset] of html.matchAll(/(?:src|href)="([^"#?]+)"/g)) {
   if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(asset)) continue;
-  if (!fs.existsSync(path.resolve(root, "public", asset.replace(/^\//, "")))) throw new Error(`Missing asset: ${asset}`);
+  if (!fs.existsSync(path.resolve(root, "frontend/public", asset.replace(/^\//, "")))) throw new Error(`Missing asset: ${asset}`);
 }
 if (!html.includes('type="module"')) throw new Error("Frontend entry must be an ES module");
 const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
-const app = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
+const app = fs.readFileSync(path.join(root, "frontend/public/js/app.js"), "utf8");
 for (const [, id] of app.matchAll(/\$\("([^"]+)"\)/g)) {
   if (!ids.has(id)) throw new Error(`Missing frontend element: #${id}`);
 }
-console.log(`前端檢查通過：${files.length} 個模組、靜態檔案、匯入路徑與畫面元素綁定。`);
+console.log(`程式檢查通過：${files.length} 個模組、靜態檔案、匯入路徑與畫面元素綁定。`);

@@ -1,57 +1,65 @@
-# RFID 尋物前端原型
+# BLE 尋物軟體原型
 
-目前只提供兩個操作：**查詢物品最後位置**與**回報物品遺失**。頁面使用示例資料，讓軟體介面可以先獨立開發、驗收；實際 RFID 回傳 JSON、傳輸方式及接收接口尚未協議。
+接收 [Lost Property Radar](https://github.com/johnjohn1207/lost-property-radar) 的 ESP32／BLE 六欄位 JSON，提供最後位置查詢與遺失回報。Node.js 22 以上、原生 HTTP API 與 PostgreSQL。
+
+## 目錄分工
+
+- frontend/public/：瀏覽器頁面、CSS、互動程式與 API 存取服務。
+- frontend/tests/：前端資料服務測試。
+- backend/src/：API 路由、BLE 轉換、物品對應、去重及資料庫操作。
+- backend/scripts/：提供前端靜態檔案的 Node HTTP 工具。
+- backend/tests/：後端轉換單元測試與資料庫整合測試。
+- backend/.env、backend/.env.example：後端環境設定與範本。
+- backend/compose.yaml：PostgreSQL 容器設定。
+- scripts/：全專案檢查與 DEMO 工具。
+- docs/：共用 API、架構、硬體連線文件與資料範例。
+
+所有 npm 指令仍從專案根目錄執行。npm start 同時提供頁面與 API，網址保持 http://localhost:3000。
+需要單獨開前端時執行 npm run start:frontend，網址為 http://localhost:5500；後端 API 仍需另外執行。
 
 ## 啟動
 
-需要 Node.js 22 以上。專案使用原生 HTML／CSS／JavaScript ES module，沒有第三方套件，不必安裝依賴。
+先開 Docker Desktop，等引擎就緒，再執行：
 
 ```powershell
+npm.cmd ci
+if (-not (Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
+docker compose -f backend/compose.yaml up -d db
+npm.cmd run db:migrate
+# 可選：四件使用示例 MAC 的物品，沒有預設位置
+npm.cmd run db:seed
 npm.cmd start
 ```
 
-開啟 <http://localhost:3000>。如果使用的終端機允許直接執行 npm，也可以用 `npm start`。停止伺服器請按 Ctrl+C。
+瀏覽器開 http://localhost:3000，停止 Node 按 Ctrl+C。已啟動舊程式時需重新啟動。
+
+## 接收格式
+
+POST /api/readings 接收 gate_id、location、item_name、ble_id、rssi、timestamp 六個必填欄位，成功回 200。新 MAC 會自動加入物品清單，重新查詢可見位置與訊號。完整範例見 [reading.example.json](docs/reading.example.json)。
+
+timestamp 是 ESP32 開機毫秒；畫面以伺服器 received_at 顯示台灣時間。相同 MAC、閘門與位置在預設 3 秒滑動時間窗內合併。
+POST /api/events 也接受同一份 JSON。可選 Idempotency-Key 標頭支援持久化事件去重，重送不增加次數、不更新位置；原韌體未帶標頭時仍只做連讀合併。
+
+## 設定與升級
+
+backend/.env 設定 DATABASE_URL、PORT、DEDUPE_WINDOW_MS、HOST。HOST 設為 0.0.0.0 可接區網上傳；預設程式值為 127.0.0.1。API 位址集中於 frontend/public/js/config.js。
+
+migrate 在交易內改名舊欄位，新增 RSSI、開機毫秒與廣播名稱；保留物品 ID、位置與遺失通報，未知值為 null。舊 RFID 示範編號保留原值，不假造 MAC。所有前後端欄位統一 snake_case。
+
+## 驗證
 
 ```powershell
 npm.cmd run check
+npm.cmd test
+$env:TEST_DATABASE_URL = 'postgresql://rfid:rfid_dev_password@127.0.0.1:5432/rfid'
+npm.cmd run test:integration
 ```
 
-此指令檢查 JavaScript 語法與必要檔案結構；不代表實際硬體或後端已完成驗證。
+整合測試使用獨立 schema，驗證六欄位上傳、前端查詢、回報、去重、並行及升級。實機 ESP32 連線仍須現場測試。
 
-## 操作
+API 啟動後執行 `npm.cmd run demo`，可模擬上報、事件重送、查詢與遺失回報；會實際登記 RADAR_DEMO 並儲存通報。
 
-1. 在「查詢位置」搜尋物品名稱或 RFID 標籤，選取物品查看最後感應位置與時間。
-2. 在「回報遺失」選取物品、填寫描述，再提交通報。
-3. 回到物品資訊查看遺失狀態。同一物品重複通報時沿用既有本機紀錄。
+[API 文件](docs/api.md) · [硬體連線步驟](docs/esp32-connection.md) · [架構](docs/frontend-architecture.md)
 
-示例物品：
-
-| 名稱 | 標籤 | 位置資料 |
-| --- | --- | --- |
-| 深藍色後背包 | `RFID-0001` | 示例最後位置與時間 |
-| 灰色筆電包 | `RFID-0002` | 示例最後位置與時間 |
-| 保溫瓶 | `RFID-0003` | 示例最後位置與時間 |
-| 黑色雨傘 | `RFID-0004` | 尚無感應紀錄 |
-
-位置與時間都是示例，不會隨真實物品移動而更新。遺失通報只保存在**目前網址、目前瀏覽器的 localStorage**；換瀏覽器或清除網站資料後無法取回，也不會傳給其他人或伺服器。
-
-## 程式結構
-
-```text
-public/
-  index.html                      查詢位置／回報遺失頁面
-  css/style.css                   版面與樣式
-  js/app.js                       畫面互動
-  js/data/demo-items.js           四筆示例物品
-  js/services/item-service.js     可替換的資料存取層
-scripts/
-  serve.mjs                       本機靜態檔案伺服器
-docs/
-  frontend-architecture.md        架構與未來串接位置
-```
-
-畫面透過資料存取層取得資料，不直接依賴 RFID 原始 JSON。未來確定後端介面後，再替換 `item-service.js` 的實作，保留前端操作流程。
-
-本階段未建置後端 API、資料庫、BLE 接收、RFID 讀取去重或通知。PostgreSQL 留待後端階段再接；目前「重複遺失通報沿用既有紀錄」只屬於前端通報行為，不是 RF 讀取去重。
-
-詳細分層與後續協作接點見 [前端架構文件](docs/frontend-architecture.md)。
+資料庫主表為 items、tag、gates、gates_event、lost_reports，reading_requests 為去重輔助表。
+欄位、關聯與升級流程見 [資料庫文件](docs/database.md)。

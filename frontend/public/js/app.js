@@ -66,17 +66,17 @@ function renderItems() {
   $("item-list").replaceChildren();
   $("empty-results").hidden = state.results.length > 0;
   $("clear-search").hidden = !state.query;
-  $("items-heading").textContent = state.query ? "搜尋結果" : "示例物品";
-  $("results-summary").textContent = state.query ? `找到 ${state.results.length} 件符合的示例物品` : `共 ${state.items.length} 件物品，選擇一件查看最後位置`;
+  $("items-heading").textContent = state.query ? "搜尋結果" : "已登記物品";
+  $("results-summary").textContent = state.query ? `找到 ${state.results.length} 件符合的物品` : `共 ${state.items.length} 件物品，選擇一件查看最後位置`;
   for (const item of state.results) {
     const selected = String(item.id) === state.selectedId;
     const card = element("button", `item-card${selected ? " selected" : ""}`);
     card.type = "button"; card.setAttribute("aria-pressed", String(selected));
-    card.setAttribute("aria-label", `查看${item.name}的最後記錄位置`);
+    card.setAttribute("aria-label", `查看${item.item_name}的最後記錄位置`);
     const top = element("span", "item-top"); top.append(itemIcon(item), statusBadge(item));
     const bottom = element("span", "item-bottom");
-    bottom.append(svg(utilityPaths.pin), element("span", "", item.lastSeen?.location || "尚無位置記錄"), element("span", "item-arrow", "→"));
-    card.append(top, element("span", "item-name", item.name), element("span", "item-uid", `UID ${item.tagUid}`), bottom);
+    bottom.append(svg(utilityPaths.pin), element("span", "", item.last_seen?.location || "尚無位置記錄"), element("span", "item-arrow", "→"));
+    card.append(top, element("span", "item-name", item.item_name), element("span", "item-uid", `MAC ${item.ble_id}`), bottom);
     card.addEventListener("click", () => { void selectItem(item); });
     $("item-list").append(card);
   }
@@ -91,19 +91,20 @@ function renderLocation() {
     content.append(placeholder); return;
   }
   const identity = element("div", "detail-item");
-  const identityText = element("div"); identityText.append(element("strong", "item-name", item.name), element("span", "item-uid", `UID ${item.tagUid}`));
+  const identityText = element("div"); identityText.append(element("strong", "item-name", item.item_name), element("span", "item-uid", `MAC ${item.ble_id}`));
   identity.append(itemIcon(item), identityText);
   const location = element("div", "location-box");
-  location.append(element("p", "location-label", "最後記錄位置・示例資料"));
-  const locationName = element("p", "location-name"); locationName.append(svg(utilityPaths.pin), document.createTextNode(item.lastSeen?.location || "尚無位置記錄"));
-  location.append(locationName, element("p", "gate-name", item.lastSeen?.gateName || "尚無閘門記錄"));
+  location.append(element("p", "location-label", "最後記錄位置"));
+  const locationName = element("p", "location-name"); locationName.append(svg(utilityPaths.pin), document.createTextNode(item.last_seen?.location || "尚無位置記錄"));
+  location.append(locationName, element("p", "gate-name", item.last_seen?.gate_id || "尚無閘門記錄"));
+  if (item.last_seen?.rssi !== null && item.last_seen?.rssi !== undefined) location.append(element("p", "gate-name", "訊號強度：" + item.last_seen.rssi + " dBm"));
   const time = element("div", "detail-time");
-  const timeText = element("div"); timeText.append(element("p", "", "示例觀測時間（台灣時間）"), element("strong", "", formatDate(item.lastSeen?.detectedAt)));
+  const timeText = element("div"); timeText.append(element("p", "", "最後觀測時間（台灣時間）"), element("strong", "", formatDate(item.last_seen?.received_at)));
   time.append(svg(utilityPaths.clock), timeText);
   const button = element("button", "button primary detail-report-button", "回報此物品遺失"); button.type = "button";
   button.prepend(svg(utilityPaths.flag));
   button.addEventListener("click", () => { openReport(item); });
-  content.append(identity, location, time, element("p", "location-footnote", "此位置來自示例資料，尚未串接 RFID，並非物品目前的即時位置。"), button);
+  content.append(identity, location, time, element("p", "location-footnote", "顯示資料庫中的最後一筆位置記錄，並非物品目前的即時位置。尚無讀取紀錄時不顯示位置。"), button);
 }
 
 async function selectItem(item) {
@@ -113,7 +114,11 @@ async function selectItem(item) {
     const selected = await getItem(item.id);
     if (state.selectedId !== selectionId) return;
     state.selectedItem = selected; renderLocation();
-  } catch (error) { showError(error); }
+    if (!selected) showError(new Error("找不到這件已登記物品，請重新查詢。"));
+  } catch (error) {
+    if (state.selectedId !== selectionId) return;
+    state.selectedItem = null; renderLocation(); showError(error);
+  }
 }
 
 function renderReportSelect() {
@@ -121,7 +126,7 @@ function renderReportSelect() {
   const current = state.reportItemId || select.value;
   select.replaceChildren();
   select.add(new Option("請選擇遺失的物品", ""));
-  for (const item of state.items) select.add(new Option(`${item.name}　｜　${item.tagUid}`, String(item.id)));
+  for (const item of state.items) select.add(new Option(`${item.item_name}　｜　${item.ble_id}`, String(item.id)));
   select.value = state.items.some(item => String(item.id) === current) ? current : "";
   state.reportItemId = select.value || null;
   renderReportPreview();
@@ -132,7 +137,7 @@ function renderReportPreview() {
   const preview = $("report-item-preview"); preview.replaceChildren(); preview.hidden = !item;
   if (item) {
     const text = element("div");
-    text.append(element("p", "", "最後記錄位置・示例"), element("strong", "", item.lastSeen?.location || "尚無位置記錄"));
+    text.append(element("p", "", "最後記錄位置"), element("strong", "", item.last_seen?.location || "尚無位置記錄"));
     preview.append(itemIcon(item), text, statusBadge(item));
   }
   $("report-submit").disabled = state.submitting || !item;
@@ -158,9 +163,9 @@ function openReport(item) {
 
 function showConfirmation(report) {
   const confirmation = $("report-confirmation"); confirmation.replaceChildren();
-  const heading = element("h3", "", report.alreadyReported ? "這件物品已回報過遺失" : "遺失回報已儲存"); heading.prepend(svg(utilityPaths.check));
-  confirmation.append(heading, element("p", "", report.alreadyReported ? "沿用此瀏覽器已存在的回報，沒有重複新增。" : "僅保存於目前瀏覽器，沒有上傳到伺服器。"));
-  confirmation.append(element("p", "", `${report.itemName}　｜　UID ${report.tagUid}`), element("p", "", `回報時間：${formatDate(report.reportedAt)}`));
+  const heading = element("h3", "", report.already_reported ? "這件物品已回報過遺失" : "遺失回報已儲存"); heading.prepend(svg(utilityPaths.check));
+  confirmation.append(heading, element("p", "", report.already_reported ? "沿用資料庫中已存在的回報，沒有重複新增。" : "後端已確認回報儲存至資料庫。"));
+  confirmation.append(element("p", "", `${report.item_name}　｜　MAC ${report.ble_id}`), element("p", "", `回報時間：${formatDate(report.reported_at)}`));
   if (report.description) confirmation.append(element("p", "confirmation-description", report.description));
   confirmation.hidden = false;
 }
@@ -194,10 +199,13 @@ $("report-form").addEventListener("submit", async event => {
   event.preventDefault(); clearError();
   const item = state.items.find(row => String(row.id) === $("report-item").value);
   if (!item || state.submitting) return;
+  $("report-confirmation").hidden = true;
   state.submitting = true; $("report-submit").disabled = true; $("report-submit").textContent = "正在儲存…";
   try {
-    const report = await reportLost({ itemId: item.id, description: $("report-description").value.trim() });
-    await refreshItems(state.selectedId); showConfirmation(report);
+    const report = await reportLost({ item_id: item.id, description: $("report-description").value.trim() });
+    showConfirmation(report);
+    try { await refreshItems(state.selectedId); }
+    catch { showError(new Error("已確認資料庫中的遺失回報，但物品清單更新失敗。請確認後端連線後重新查詢。")); }
   } catch (error) { showError(error); }
   finally { state.submitting = false; $("report-submit").textContent = "儲存遺失回報"; renderReportPreview(); }
 });

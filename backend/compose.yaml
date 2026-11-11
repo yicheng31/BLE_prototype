@@ -1,0 +1,23 @@
+# @Author: Your name
+# @Date:   2026-11-10 10:15:33
+# @Last Modified by:   Your name
+# @Last Modified time: 2026-11-10 10:17:16
+name: rfid-prototype
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: rfid
+      POSTGRES_USER: rfid
+      POSTGRES_PASSWORD: rfid_dev_password
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rfid -d rfid"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+volumes:
+  postgres_data:
