@@ -1,0 +1,88 @@
+<!-- 
+  @Author: Your name
+  @Date:   2026-11-09 23:57:53
+  @Last Modified by:   Your name
+  @Last Modified time: 2026-11-10 00:01:12
+-->
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>尋物所｜物品位置查詢</title>
+  <link rel="stylesheet" href="./css/style.css">
+  <script type="module" src="./js/app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <a class="brand" href="./index.html" aria-label="尋物所首頁">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 28 28" fill="none"><path d="M7 11V8a7 7 0 0 1 14 0v3M6 11h16v13H6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M11 16h6M14 16v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        <span>尋物所<small>FIND YOUR THINGS</small></span>
+      </a>
+      <nav class="tabs" role="tablist" aria-label="主要功能">
+        <button id="lookup-tab" class="tab active" role="tab" aria-selected="true" aria-controls="lookup-panel" type="button">查詢位置</button>
+        <button id="report-tab" class="tab" role="tab" aria-selected="false" aria-controls="report-panel" tabindex="-1" type="button">回報遺失</button>
+      </nav>
+      <span class="prototype-label"><span aria-hidden="true"></span>前端原型</span>
+    </header>
+
+    <main>
+      <p id="global-message" class="global-message" role="status" aria-live="polite" hidden></p>
+
+      <section id="lookup-panel" role="tabpanel" aria-labelledby="lookup-tab">
+        <div class="page-intro">
+          <div><p class="eyebrow">A PLACE TO START LOOKING</p><h1>從最後的位置，<br class="mobile-break">找回重要的物品。</h1><p class="intro-copy">搜尋物品名稱或 RFID UID，查看最後一次記錄的位置與時間。</p></div>
+          <div class="intro-illustration" aria-hidden="true"><span class="illustration-orbit orbit-one"></span><span class="illustration-orbit orbit-two"></span><svg class="illustration-bag" viewBox="0 0 100 110" fill="none"><path d="M35 28V17a15 15 0 0 1 30 0v11" stroke="#356555" stroke-width="5"/><rect x="17" y="27" width="66" height="76" rx="19" fill="#dbe8d8" stroke="#356555" stroke-width="3"/><path d="M28 45h44" stroke="#356555" stroke-width="3"/><rect x="30" y="65" width="40" height="25" rx="8" fill="#fafcf7" stroke="#356555" stroke-width="3"/><path d="M64 46v10" stroke="#356555" stroke-width="3" stroke-linecap="round"/></svg><span class="illustration-pin"><svg viewBox="0 0 24 24" fill="none"><path d="M19 10c0 5-7 10-7 10S5 15 5 10a7 7 0 1 1 14 0Z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.8"/></svg></span></div>
+        </div>
+
+        <div class="sample-notice"><span class="sample-pill">示例資料</span><p>目前尚未串接 RFID。畫面中的位置與時間僅供介面展示。</p></div>
+
+        <form id="search-form" class="search-box" role="search">
+          <label for="search-input" class="sr-only">搜尋物品名稱或 RFID UID</label>
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <input id="search-input" type="search" maxlength="128" placeholder="輸入物品名稱或 RFID UID" autocomplete="off">
+          <button id="search-button" class="button primary" type="submit">搜尋物品<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </form>
+
+        <div class="lookup-layout">
+          <section class="items-section" aria-labelledby="items-heading">
+            <div class="section-heading"><div><h2 id="items-heading">示例物品</h2><p id="results-summary" class="muted" aria-live="polite">正在載入物品…</p></div><button id="clear-search" class="text-button" type="button" hidden>清除搜尋</button></div>
+            <div id="item-list" class="item-grid" aria-label="物品查詢結果"></div>
+            <div id="empty-results" class="empty-state" hidden><span class="empty-symbol" aria-hidden="true">⌕</span><h3>沒有找到符合的物品</h3><p>試試其他名稱，或確認 RFID UID 是否正確。</p><button id="reset-search" class="button secondary" type="button">查看所有示例物品</button></div>
+          </section>
+
+          <aside id="location-panel" class="location-panel" aria-labelledby="location-heading" aria-live="polite">
+            <div class="section-heading"><h2 id="location-heading">最後記錄位置</h2><span class="sample-tag">示例</span></div>
+            <div id="location-content" class="location-content"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="report-panel" role="tabpanel" aria-labelledby="report-tab" hidden>
+        <div class="page-intro report-intro"><div><p class="eyebrow">KEEP A NOTE OF WHAT'S MISSING</p><h1>回報物品遺失</h1><p class="intro-copy">選擇已登記的示例物品，留下這次遺失的補充描述。</p></div></div>
+        <div class="sample-notice"><span class="sample-pill">本機儲存</span><p>回報只會儲存在目前的瀏覽器，不會上傳到伺服器。尚未串接 RFID。</p></div>
+        <div class="report-layout">
+          <section class="report-card" aria-labelledby="report-form-heading">
+            <div class="section-heading"><div><p class="eyebrow">LOST ITEM REPORT</p><h2 id="report-form-heading">填寫遺失資訊</h2></div><span class="step-marker">01 / 01</span></div>
+            <form id="report-form">
+              <label class="field-label" for="report-item">遺失物品 <span class="required-mark">*</span></label>
+              <select id="report-item" name="itemId" required><option value="">正在載入物品…</option></select>
+              <p class="field-help">本階段僅能回報清單中已登記的示例物品。</p>
+              <div id="report-item-preview" class="report-item-preview" hidden></div>
+              <label class="field-label description-label" for="report-description">補充描述 <span class="optional-label">選填</span></label>
+              <textarea id="report-description" name="description" rows="5" maxlength="500" placeholder="例如：今天下午離開教室後發現物品不見，外觀有一個綠色吊飾。"></textarea>
+              <div class="field-help description-help"><span>可補充遺失時間、外觀或其他辨識線索。</span><span id="description-count">0 / 500</span></div>
+              <div class="report-form-footer"><p><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="5" y="8" width="10" height="8" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M7 8V6a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.4"/></svg>僅儲存在這台瀏覽器</p><button id="report-submit" class="button primary" type="submit">儲存遺失回報</button></div>
+            </form>
+            <div id="report-confirmation" class="report-confirmation" role="status" aria-live="polite" hidden></div>
+          </section>
+          <aside class="report-guide"><div class="guide-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M19 10c0 5-7 10-7 10S5 15 5 10a7 7 0 1 1 14 0Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="1.6"/></svg></div><h2>先從最後位置找起</h2><p>查詢物品最後記錄的閘門、位置與時間，作為尋找時的參考。</p><button id="back-to-lookup" class="text-button" type="button">返回位置查詢 <span aria-hidden="true">↗</span></button><div class="guide-divider"></div><h3>關於這份回報</h3><p>相同物品不會重複新增回報。重新整理頁面後，這台瀏覽器仍會保留遺失狀態。</p><p class="guide-footnote">清除瀏覽器網站資料後，本機回報也會一併移除。</p></aside>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer"><span>尋物所 <span class="footer-separator">/</span> 物品位置查詢</span><span>示例資料 · 尚未串接 RFID · 回報僅保存於目前瀏覽器</span></footer>
+  </div>
+</body>
+</html>

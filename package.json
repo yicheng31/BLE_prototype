@@ -1,0 +1,14 @@
+{
+  "name": "rfid-lost-found-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "物品最後位置查詢與遺失回報的前端原型",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "dev": "node --watch scripts/serve.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=22.0.0" }
+}
