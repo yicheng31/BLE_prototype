@@ -1,5 +1,8 @@
 node_modules/
+/.local-backups/
 .env
+.env.*
+!.env.example
 *.log
 coverage/
 .DS_Store

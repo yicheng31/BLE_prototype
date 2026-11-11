@@ -1,14 +1,24 @@
 {
-  "name": "rfid-lost-found-frontend",
+  "name": "rfid-lost-found",
   "version": "1.0.0",
   "private": true,
-  "description": "物品最後位置查詢與遺失回報的前端原型",
+  "description": "BLE 物品查詢與遺失回報，前後端分層",
   "type": "module",
   "scripts": {
-    "start": "node scripts/serve.mjs",
-    "dev": "node --watch scripts/serve.mjs",
+    "start": "node backend/src/server.js",
+    "dev": "node --watch backend/src/server.js",
     "check": "node scripts/check.mjs",
-    "test": "node --test"
+    "test": "node --test frontend/tests/item-service.test.js backend/tests/readings.test.js",
+    "test:integration": "node --test backend/tests/backend.integration.test.js",
+    "demo": "node scripts/demo.mjs",
+    "db:migrate": "node backend/src/db/migrate.js",
+    "db:seed": "node backend/src/db/seed.js",
+    "start:frontend": "node backend/scripts/serve.mjs"
   },
-  "engines": { "node": ">=22.0.0" }
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  }
 }
