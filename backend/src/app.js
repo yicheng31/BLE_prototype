@@ -56,7 +56,7 @@ export function createApp({ pool, dedupeWindowMs = 3000, now = () => new Date() 
         res.setHeader("Vary", "Origin");
       }
       if (req.method === "OPTIONS") {
-        res.writeHead(204, { "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Idempotency-Key" });
+        res.writeHead(204, { "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Idempotency-Key" });
         return res.end();
       }
       if (pathname === "/api/items" && req.method === "GET") {
@@ -71,10 +71,17 @@ export function createApp({ pool, dedupeWindowMs = 3000, now = () => new Date() 
         if (!item) throw new HttpError(404, "ITEM_NOT_FOUND", "找不到這件物品");
         return json(res, 200, item);
       }
+      if (itemRoute && req.method === "DELETE") {
+        return json(res, 200, await items.remove(decodeURIComponent(itemRoute[1])));
+      }
       const lostRoute = /^\/api\/items\/([^/]+)\/lost$/.exec(pathname);
       if (lostRoute && req.method === "POST") {
         const report = await items.report(decodeURIComponent(lostRoute[1]), await readJson(req));
         return json(res, report.already_reported ? 200 : 201, report);
+      }
+      const foundRoute = /^\/api\/items\/([^/]+)\/found$/.exec(pathname);
+      if (foundRoute && req.method === "POST") {
+        return json(res, 200, await items.found(decodeURIComponent(foundRoute[1]), await readJson(req)));
       }
       // Both routes accept the upstream firmware's unchanged six-field JSON.
       if (["/api/readings", "/api/events"].includes(pathname) && req.method === "POST") {

@@ -10,7 +10,6 @@
     "check": "node scripts/check.mjs",
     "test": "node --test frontend/tests/item-service.test.js backend/tests/readings.test.js",
     "test:integration": "node --test backend/tests/backend.integration.test.js",
-    "demo": "node scripts/demo.mjs",
     "db:migrate": "node backend/src/db/migrate.js",
     "db:seed": "node backend/src/db/seed.js",
     "start:frontend": "node backend/scripts/serve.mjs"
