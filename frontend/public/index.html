@@ -24,12 +24,16 @@
       <nav class="tabs" role="tablist" aria-label="主要功能">
         <button id="lookup-tab" class="tab active" role="tab" aria-selected="true" aria-controls="lookup-panel" type="button">查詢位置</button>
         <button id="report-tab" class="tab" role="tab" aria-selected="false" aria-controls="report-panel" tabindex="-1" type="button">回報遺失</button>
+        <button id="register-tab" class="tab" role="tab" aria-selected="false" aria-controls="register-panel" tabindex="-1" type="button">登記物品</button>
       </nav>
       <span class="prototype-label"><span aria-hidden="true"></span>資料庫版</span>
     </header>
 
     <main>
       <p id="global-message" class="global-message" role="status" aria-live="polite" hidden></p>
+      <p id="found-message" class="found-message" role="status" aria-live="polite" hidden></p>
+      <p id="register-message" class="found-message" role="status" aria-live="polite" hidden></p>
+      <p id="delete-message" class="found-message" role="status" aria-live="polite" hidden></p>
 
       <section id="lookup-panel" role="tabpanel" aria-labelledby="lookup-tab">
         <div class="page-intro">
@@ -50,7 +54,7 @@
           <section class="items-section" aria-labelledby="items-heading">
             <div class="section-heading"><div><h2 id="items-heading">已登記物品</h2><p id="results-summary" class="muted" aria-live="polite">正在載入物品…</p></div><button id="clear-search" class="text-button" type="button" hidden>清除搜尋</button></div>
             <div id="item-list" class="item-grid" aria-label="物品查詢結果"></div>
-            <div id="empty-results" class="empty-state" hidden><span class="empty-symbol" aria-hidden="true">⌕</span><h3>沒有找到符合的物品</h3><p>試試其他名稱，或確認 BLE MAC 是否正確。</p><button id="reset-search" class="button secondary" type="button">查看所有已登記物品</button></div>
+            <div id="empty-results" class="empty-state" hidden><span class="empty-symbol" aria-hidden="true">⌕</span><h3 id="empty-title">沒有找到符合的物品</h3><p id="empty-description">試試其他名稱，或確認 BLE MAC 是否正確。</p><button id="reset-search" class="button secondary" type="button">查看所有已登記物品</button><button id="open-register" class="button primary" type="button" hidden>登記第一件物品</button></div>
           </section>
 
           <aside id="location-panel" class="location-panel" aria-labelledby="location-heading" aria-live="polite">
@@ -62,7 +66,7 @@
 
       <section id="report-panel" role="tabpanel" aria-labelledby="report-tab" hidden>
         <div class="page-intro report-intro"><div><p class="eyebrow">KEEP A NOTE OF WHAT'S MISSING</p><h1>回報物品遺失</h1><p class="intro-copy">選擇已登記的物品，留下這次遺失的補充描述。</p></div></div>
-        <div class="sample-notice"><span class="sample-pill">資料庫儲存</span><p>回報由後端儲存至資料庫，重新開啟頁面後仍可查詢。新感應物品會加入清單，重新查詢可查看最新位置。</p></div>
+        <div class="sample-notice"><span class="sample-pill">資料庫儲存</span><p>回報由後端儲存至資料庫，重新開啟頁面後仍可查詢。請先登記物品並綁定標籤；重新查詢可查看最新位置。</p></div>
         <div class="report-layout">
           <section class="report-card" aria-labelledby="report-form-heading">
             <div class="section-heading"><div><p class="eyebrow">LOST ITEM REPORT</p><h2 id="report-form-heading">填寫遺失資訊</h2></div><span class="step-marker">01 / 01</span></div>
@@ -78,7 +82,26 @@
             </form>
             <div id="report-confirmation" class="report-confirmation" role="status" aria-live="polite" hidden></div>
           </section>
-          <aside class="report-guide"><div class="guide-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M19 10c0 5-7 10-7 10S5 15 5 10a7 7 0 1 1 14 0Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="1.6"/></svg></div><h2>先從最後位置找起</h2><p>查詢物品最後記錄的閘門、位置與時間，作為尋找時的參考。</p><button id="back-to-lookup" class="text-button" type="button">返回位置查詢 <span aria-hidden="true">↗</span></button><div class="guide-divider"></div><h3>關於這份回報</h3><p>相同物品不會重複新增回報。重新整理頁面後，會從資料庫重新查詢遺失狀態。</p><p class="guide-footnote">儲存結果以後端回應為準；連線失敗時不會顯示儲存成功。</p></aside>
+          <aside class="report-guide"><div class="guide-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M19 10c0 5-7 10-7 10S5 15 5 10a7 7 0 1 1 14 0Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="1.6"/></svg></div><h2>先從最後位置找起</h2><p>查詢物品最後記錄的閘門、位置與時間，作為尋找時的參考。</p><button id="back-to-lookup" class="text-button" type="button">返回位置查詢 <span aria-hidden="true">↗</span></button><div class="guide-divider"></div><h3>關於這份回報</h3><p>物品遺失中時不會重複新增回報。找到物品後，可在位置明細按「已找到」；之後若再次遺失，可以重新回報。</p><p class="guide-footnote">儲存結果以後端回應為準；連線失敗時不會顯示儲存成功。</p></aside>
+        </div>
+      </section>
+      <section id="register-panel" role="tabpanel" aria-labelledby="register-tab" hidden>
+        <div class="page-intro report-intro"><div><p class="eyebrow">GIVE YOUR ITEM A NAME</p><h1>登記物品與標籤</h1><p class="intro-copy">先設定容易辨識的物品名稱，再綁定標籤的 BLE MAC。</p></div></div>
+        <div class="sample-notice"><span class="sample-pill">先登記再感應</span><p>物品名稱由你設定，BLE MAC 用來對應感應記錄；同一個 MAC 只能綁定一件物品。</p></div>
+        <div class="report-layout">
+          <section class="report-card" aria-labelledby="register-form-heading">
+            <div class="section-heading"><div><p class="eyebrow">REGISTER AN ITEM</p><h2 id="register-form-heading">填寫物品資訊</h2></div><span class="step-marker">01 / 01</span></div>
+            <form id="register-form">
+              <label class="field-label" for="register-name">物品名稱 <span class="required-mark">*</span></label>
+              <input id="register-name" class="registration-input" name="item_name" type="text" maxlength="100" required placeholder="例如：黑色錢包" autocomplete="off">
+              <p class="field-help">請填寫你想在清單中看到的名稱，最多 100 字。</p>
+              <label class="field-label description-label" for="register-mac">標籤 BLE MAC <span class="required-mark">*</span></label>
+              <input id="register-mac" class="registration-input" name="ble_id" type="text" maxlength="64" required placeholder="例如：aa:bb:cc:dd:ee:ff" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="register-mac-help">
+              <p id="register-mac-help" class="field-help">向硬體組或實體標籤確認 MAC；格式為六組冒號分隔的十六進位字元。</p>
+              <div class="report-form-footer"><p>名稱與 MAC 會儲存至資料庫</p><button id="register-submit" class="button primary" type="submit">登記並綁定</button></div>
+            </form>
+          </section>
+          <aside class="report-guide"><div class="guide-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m3 12 9 9 9-9V3h-9L3 12Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="16.5" cy="7.5" r="1.5" stroke="currentColor" stroke-width="1.6"/></svg></div><h2>確認標籤的 MAC</h2><p>請填物品標籤的 BLE MAC，不是閘門或讀取器的 MAC。廣播名稱不等於你設定的物品名稱，不能用名稱推算 MAC。</p><div class="guide-divider"></div><h3>登記後會發生什麼？</h3><p>物品會出現在查詢清單；若這個 MAC 已有感應記錄，綁定後即可查看最後位置。</p><p class="guide-footnote">尚無感應記錄時，位置會顯示「尚無位置記錄」。重複的 MAC 不會覆寫既有物品。</p></aside>
         </div>
       </section>
     </main>
