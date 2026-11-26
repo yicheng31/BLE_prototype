@@ -100,7 +100,7 @@ test("PostgreSQL：API、位置更新與讀取去重整合", {
   }
   await suite.test("六欄位上傳、前端查詢、遺失回報與持久化", async t => {
     const f = await fixture(t);
-    const { createItemService } = await import("../../frontend/public/js/services/item-service.js");
+    const { createItemService } = await import("../../../frontend/public/js/services/item-service.js");
     const service = createItemService({ baseUrl: "http://localhost:3000", fetchImpl: async (url, init) => {
       const parsed = new URL(url); const result = await f.request(parsed.pathname + parsed.search, { method: init.method, raw: init.body, headers: init.headers });
       return new Response(JSON.stringify(result.data), { status: result.status });
@@ -334,7 +334,7 @@ test("PostgreSQL：API、位置更新與讀取去重整合", {
     const { promisify } = await import("node:util");
     const { fileURLToPath } = await import("node:url");
     const result = await promisify(execFile)(process.execPath,
-      [fileURLToPath(new URL("../../scripts/demo.mjs", import.meta.url)), f.baseUrl],
+      [fileURLToPath(new URL("../../../scripts/demo.mjs", import.meta.url)), f.baseUrl],
       { timeout: 20000, encoding: "utf8" });
     const data = JSON.parse(result.stdout);
     assert.equal(data.retry_reason, "event_retry");
@@ -343,7 +343,7 @@ test("PostgreSQL：API、位置更新與讀取去重整合", {
     assert.equal(data.report.already_reported, false);
     assert.equal((await f.request("/api/items/" + data.event.item_id)).data.status, "lost");
     const again = await promisify(execFile)(process.execPath,
-      [fileURLToPath(new URL("../../scripts/demo.mjs", import.meta.url)), f.baseUrl],
+      [fileURLToPath(new URL("../../../scripts/demo.mjs", import.meta.url)), f.baseUrl],
       { timeout: 20000, encoding: "utf8" });
     const repeated = JSON.parse(again.stdout);
     assert.equal(repeated.event.item_id, data.item.id);
@@ -358,7 +358,7 @@ test("PostgreSQL：API、位置更新與讀取去重整合", {
     const { execFile } = await import("node:child_process");
     const { promisify } = await import("node:util");
     const { fileURLToPath } = await import("node:url");
-    const script = fileURLToPath(new URL("../../scripts/demo-reading.mjs", import.meta.url));
+    const script = fileURLToPath(new URL("../../../scripts/demo-reading.mjs", import.meta.url));
     const run = scene => promisify(execFile)(process.execPath, [script, scene, f.baseUrl], { timeout: 20000, encoding: "utf8" });
     const unbound = JSON.parse((await run("library")).stdout);
     assert.equal(unbound.item_id, null);
@@ -549,7 +549,7 @@ test("PostgreSQL：API、位置更新與讀取去重整合", {
     const f = await fixture(t);
     const id = await registerAndRead(f);
     const other = await register(f, { ble_id: "02:00:00:00:de:02", item_name: "保留的物品" });
-    const { createItemService } = await import("../../frontend/public/js/services/item-service.js");
+    const { createItemService } = await import("../../../frontend/public/js/services/item-service.js");
     const service = createItemService({ baseUrl: f.baseUrl });
     await service.reportLost({ item_id: id }); await service.markFound(id);
     const before = {};
