@@ -5,6 +5,8 @@ public/css/style.css：頁面樣式及響應式排版。
 public/js/app.js：名稱／MAC 登記、搜尋、位置顯示、遺失／已找到及刪除確認與取消。
 public/js/config.js：API 根網址設定。
 public/js/services/item-service.js：呼叫後端並驗證回應。
+public/js/ui/dom.js、ui/icons.js：DOM 建立、SVG 圖示與狀態標籤。
+public/js/utils/format.js：台灣時間格式化。
 tests/item-service.test.js：前端 API 存取層測試。
 
 在專案根目錄執行 npm start，即可使用 http://localhost:3000。

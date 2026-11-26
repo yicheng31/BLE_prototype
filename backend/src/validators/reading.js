@@ -1,6 +1,7 @@
-import { HttpError, object, text } from "../errors.js";
+import { HttpError } from "../errors.js";
+import { object, text } from "./common.js";
 
-// Six-field contract from johnjohn1207/lost-property-radar.
+// 來自 lost-property-radar 的六欄位格式。
 export function normalizeReading(payload) {
   object(payload);
   const ble_id = text(payload.ble_id, "ble_id", 17).toLowerCase();
@@ -11,7 +12,7 @@ export function normalizeReading(payload) {
     item_name: text(payload.item_name, "item_name", 100), ble_id, rssi: payload.rssi, timestamp: payload.timestamp };
 }
 
-// Internal record adds server receipt time without interpreting ESP32 uptime as a date.
+// 內部格式加入伺服器接收時間；ESP32 開機毫秒不轉成日期。
 export function toInternalReading(payload, receivedAt) {
   const reading = normalizeReading(payload);
   if (!(receivedAt instanceof Date) || !Number.isFinite(receivedAt.getTime())) {

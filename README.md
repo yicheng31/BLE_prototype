@@ -2,17 +2,41 @@
 
 接收 [Lost Property Radar](https://github.com/johnjohn1207/lost-property-radar) 的 ESP32／BLE 六欄位 JSON，提供物品登記、最後位置查詢、遺失回報、「已找到」結案與刪除登記。Node.js 22 以上、原生 HTTP API 與 PostgreSQL。
 
-## 目錄分工
+## 目錄結構
 
-- frontend/public/：瀏覽器頁面、CSS、互動程式與 API 存取服務。
-- frontend/tests/：前端資料服務測試。
-- backend/src/：API 路由、BLE 轉換、物品對應、去重及資料庫操作。
-- backend/scripts/：提供前端靜態檔案的 Node HTTP 工具。
-- backend/tests/：後端轉換單元測試與資料庫整合測試。
-- backend/.env、backend/.env.example：後端環境設定與範本。
-- backend/compose.yaml：PostgreSQL 容器設定。
-- scripts/：全專案檢查工具。
-- docs/：共用 API、架構、資料庫說明與資料範例。
+```text
+rfid-prototype/
+├── backend/
+│   ├── src/
+│   │   ├── server.js         # 進入點：載入設定、升級資料表、啟動 HTTP
+│   │   ├── app.js            # 組裝 CORS、路由、靜態檔案與錯誤處理
+│   │   ├── config.js         # 環境變數
+│   │   ├── errors.js         # HttpError
+│   │   ├── http/             # JSON 讀寫、CORS、靜態檔案
+│   │   ├── routes/           # API 路由表（items、readings）
+│   │   ├── services/         # 業務邏輯與 SQL
+│   │   ├── validators/       # 輸入驗證、BLE 六欄位轉換
+│   │   └── db/               # 連線、schema、migrate、seed
+│   ├── tests/
+│   │   ├── unit/             # 不需資料庫
+│   │   └── integration/      # 需 TEST_DATABASE_URL
+│   └── .env.example
+├── frontend/
+│   ├── public/
+│   │   ├── index.html
+│   │   ├── css/
+│   │   └── js/
+│   │       ├── app.js        # 畫面狀態與事件
+│   │       ├── config.js     # API 根網址
+│   │       ├── services/     # 呼叫後端 API
+│   │       ├── ui/           # DOM 與圖示輔助
+│   │       └── utils/        # 格式化
+│   └── tests/
+├── scripts/                  # 檢查、單獨啟動前端
+├── docs/                     # API、資料庫、架構文件與範例
+├── compose.yaml              # PostgreSQL 容器
+└── package.json
+```
 
 所有 npm 指令仍從專案根目錄執行。npm start 同時提供頁面與 API，網址保持 http://localhost:3000。
 需要單獨開前端時執行 npm run start:frontend，網址為 http://localhost:5500；後端 API 仍需另外執行。
@@ -24,7 +48,7 @@
 ```powershell
 npm.cmd ci
 if (-not (Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
-docker compose -f backend/compose.yaml up -d db
+npm.cmd run db:up
 npm.cmd run db:migrate
 # 可選：四件使用示例 MAC 的物品，沒有預設位置
 npm.cmd run db:seed

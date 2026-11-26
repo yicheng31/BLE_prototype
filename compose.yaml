@@ -1,7 +1,3 @@
-# @Author: Your name
-# @Date:   2026-11-10 10:15:33
-# @Last Modified by:   Your name
-# @Last Modified time: 2026-11-10 10:17:16
 name: rfid-prototype
 services:
   db:

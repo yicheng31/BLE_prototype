@@ -8,11 +8,12 @@
     "start": "node backend/src/server.js",
     "dev": "node --watch backend/src/server.js",
     "check": "node scripts/check.mjs",
-    "test": "node --test frontend/tests/item-service.test.js backend/tests/readings.test.js",
-    "test:integration": "node --test backend/tests/backend.integration.test.js",
+    "test": "node --test \"backend/tests/unit/**/*.test.js\" \"frontend/tests/**/*.test.js\"",
+    "test:integration": "node --test \"backend/tests/integration/**/*.test.js\"",
     "db:migrate": "node backend/src/db/migrate.js",
     "db:seed": "node backend/src/db/seed.js",
-    "start:frontend": "node backend/scripts/serve.mjs"
+    "start:frontend": "node scripts/serve-frontend.mjs",
+    "db:up": "docker compose up -d db"
   },
   "engines": {
     "node": ">=22.0.0"

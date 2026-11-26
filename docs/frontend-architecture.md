@@ -4,8 +4,8 @@
 
 ```mermaid
 flowchart LR
-  ESP[ESP32 掃描 BLE 廣播] -->|HTTP POST 六欄位| API[backend/src/app.js]
-  API --> Normalize[readings/normalize.js]
+  ESP[ESP32 掃描 BLE 廣播] -->|HTTP POST 六欄位| API[backend/src/routes/]
+  API --> Normalize[validators/reading.js]
   Normalize --> Readings[ReadingsService：對應物品與去重]
   Readings --> PG[(PostgreSQL)]
   UI[frontend 畫面] --> Client[item-service.js]
@@ -22,14 +22,17 @@ flowchart LR
 | `frontend/public/js/app.js` | 登記、搜尋、位置／訊號顯示、遺失／已找到，以及刪除確認與取消 |
 | `frontend/public/js/services/item-service.js` | API 存取與回應驗證；提供 `createItem`、`listItems`、`searchItems`、`getItem`、`reportLost`、`markFound`、`deleteItem` |
 | `frontend/public/js/config.js` | API 根網址；預設沿用頁面主機名稱的 3000 埠 |
+| `frontend/public/js/ui/`、`js/utils/` | DOM／SVG 圖示輔助與日期格式化 |
 | `backend/src/server.js` | 讀取 `backend/.env`、執行升級、啟動 HTTP 服務 |
-| `backend/src/app.js` | API 路由、JSON 限制、錯誤回應及前端靜態檔案 |
-| `backend/src/readings/normalize.js` | 驗證六欄位、統一 MAC、加入伺服器接收時間 |
+| `backend/src/app.js` | 組裝 CORS、路由、靜態檔案與統一錯誤回應 |
+| `backend/src/http/` | JSON 讀取（16KB 限制）與回應、CORS、前端靜態檔案 |
+| `backend/src/routes/` | 各 API 的 method／路徑與對應 service 呼叫 |
+| `backend/src/validators/` | 共用欄位驗證；`reading.js` 驗證六欄位、統一 MAC、加入伺服器接收時間 |
 | `backend/src/services/item-mapping.js` | 依 MAC 查詢有效綁定；未登記或已刪除時不自動建立／恢復物品 |
 | `backend/src/services/readings.js` | 事件重送去重、連讀合併、閘門與位置紀錄更新 |
 | `backend/src/services/items.js` | 物品登記／再登記、查詢、遺失／已找到及物品軟刪除 |
 | `backend/src/db/` | `pg` 連線池、交易、資料表、升級與種子登記 |
-| `backend/scripts/serve.mjs` | 提供 `frontend/public/` 靜態檔案；也可單獨啟動前端服務 |
+| `scripts/serve-frontend.mjs` | 單獨啟動前端靜態服務（5500 埠） |
 | `scripts/check.mjs` | 全專案靜態檢查 |
 
 ## 讀取、位置與去重

@@ -1,9 +1,3 @@
-/**
- * @Author: Your name
- * @Date:   2026-11-09 23:56:13
- * @Last Modified by:   Your name
- * @Last Modified time: 2026-11-11 14:24:03
- */
 import { API_BASE_URL } from "../config.js";
 
 const validId = value => (typeof value === "string" && value.trim().length > 0) || (Number.isSafeInteger(value) && value > 0);

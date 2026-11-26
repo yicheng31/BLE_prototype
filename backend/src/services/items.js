@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { HttpError, object, text, tag } from "../errors.js";
+import { HttpError } from "../errors.js";
+import { object, text, tag } from "../validators/common.js";
 import { transaction } from "../db/connection.js";
 
 const selectItems = `SELECT i.id, i.item_name, t.ble_id, i.category, i.icon,
@@ -48,7 +49,7 @@ export class ItemsService {
           await client.query("INSERT INTO items (id,item_name,category,icon) VALUES ($1,$2,$3,$4)", [item.id,item.item_name,item.category,item.icon]);
         }
         await client.query("INSERT INTO tag (ble_id,item_id) VALUES ($1,$2) ON CONFLICT (ble_id) DO UPDATE SET item_id=EXCLUDED.item_id", [item.ble_id,item.id]);
-        // Return a snapshot while registration still owns the item lock.
+        // 在登記仍持有物品鎖時回傳快照。
         return itemDto((await client.query(`${selectItems} WHERE i.id=$1`, [item.id])).rows[0]);
       });
     } catch (error) {
@@ -75,7 +76,7 @@ export class ItemsService {
   async found(id, payload) {
     object(payload);
     return transaction(this.pool, async client => {
-      // Serialize reporting and resolving the same item, including repeated clicks.
+      // 同一物品的回報與結案依序處理，包含重複點擊。
       const item = (await client.query("SELECT id FROM items WHERE id=$1 AND deleted_at IS NULL FOR UPDATE", [id])).rows[0];
       if (!item) throw new HttpError(404, "ITEM_NOT_FOUND", "找不到這件物品");
       const updated = await client.query(`UPDATE lost_reports SET deleted_at=$2

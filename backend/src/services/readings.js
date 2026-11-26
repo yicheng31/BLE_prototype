@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { transaction } from "../db/connection.js";
-import { normalizeReading, toInternalReading } from "../readings/normalize.js";
-import { HttpError, text } from "../errors.js";
+import { normalizeReading, toInternalReading } from "../validators/reading.js";
+import { HttpError } from "../errors.js";
+import { text } from "../validators/common.js";
 import { resolveItem } from "./item-mapping.js";
 
 export class ReadingsService {

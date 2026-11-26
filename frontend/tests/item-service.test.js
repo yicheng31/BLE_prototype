@@ -1,9 +1,3 @@
-/**
- * @Author: Your name
- * @Date:   2026-11-10 10:15:03
- * @Last Modified by:   Your name
- * @Last Modified time: 2026-11-11 21:33:09
- */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createItemService } from "../public/js/services/item-service.js";

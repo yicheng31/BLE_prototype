@@ -11,7 +11,7 @@ function scan(directory) {
     else if (/\.(?:mjs|js)$/.test(filename)) files.push(filename);
   }
 }
-for (const folder of ["frontend/public/js", "backend/src", "scripts", "backend/scripts", "frontend/tests", "backend/tests"]) {
+for (const folder of ["frontend/public/js", "backend/src", "scripts", "frontend/tests", "backend/tests"]) {
   if (fs.existsSync(path.join(root, folder))) scan(path.join(root, folder));
 }
 for (const filename of files) {

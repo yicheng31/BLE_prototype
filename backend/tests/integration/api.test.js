@@ -10,8 +10,8 @@ test("PostgreSQL：API、位置更新與讀取去重整合", {
   skip: databaseUrl ? false : "未設定 TEST_DATABASE_URL，未執行真實 PostgreSQL 整合測試。"
 }, async suite => {
   const { Pool } = await import("pg");
-  const { createApp } = await import("../src/app.js");
-  const { migrate } = await import("../src/db/migrate.js");
+  const { createApp } = await import("../../src/app.js");
+  const { migrate } = await import("../../src/db/migrate.js");
 
   async function fixture(t) {
     const schema = `rfid_test_${Date.now().toString(36)}_${randomBytes(6).toString("hex")}`;
@@ -100,7 +100,7 @@ test("PostgreSQL：API、位置更新與讀取去重整合", {
   }
   await suite.test("六欄位上傳、前端查詢、遺失回報與持久化", async t => {
     const f = await fixture(t);
-    const { createItemService } = await import("../../frontend/public/js/services/item-service.js");
+    const { createItemService } = await import("../../../frontend/public/js/services/item-service.js");
     const service = createItemService({ baseUrl: "http://localhost:3000", fetchImpl: async (url, init) => {
       const parsed = new URL(url); const result = await f.request(parsed.pathname + parsed.search, { method: init.method, raw: init.body, headers: init.headers });
       return new Response(JSON.stringify(result.data), { status: result.status });
@@ -226,7 +226,7 @@ test("PostgreSQL：API、位置更新與讀取去重整合", {
   });
   await suite.test("舊資料庫升級成五張主表，保留未綁定標籤、位置、事件與通報", async t => {
     const f = await fixture(t);
-    // This fixture has its own random schema; recreate the pre-split schema only here.
+    // 此測試使用獨立隨機 schema，只在這裡重建拆表前的舊結構。
     await f.pool.query(`DROP TABLE reading_requests,lost_reports,gates_event,tag,gates,items;
       CREATE TABLE items (id TEXT PRIMARY KEY,name TEXT NOT NULL,tag_uid TEXT UNIQUE NOT NULL,category TEXT NOT NULL DEFAULT '',icon TEXT NOT NULL DEFAULT 'backpack');
       CREATE TABLE readings (id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,tag_uid TEXT NOT NULL,reader_id TEXT NOT NULL,location TEXT NOT NULL,first_seen_at TIMESTAMPTZ NOT NULL,last_seen_at TIMESTAMPTZ NOT NULL,read_count INTEGER NOT NULL DEFAULT 1);
@@ -346,13 +346,13 @@ test("PostgreSQL：API、位置更新與讀取去重整合", {
   await suite.test("種子資料跨 items 與 tag 寫入，可重複執行", async t => {
     const f = await fixture(t);
     const { execFile } = await import("node:child_process"); const { promisify } = await import("node:util"); const { fileURLToPath } = await import("node:url");
-    for (let i=0;i<2;i++) await promisify(execFile)(process.execPath, [fileURLToPath(new URL("../src/db/seed.js",import.meta.url))], {env:{...process.env,DATABASE_URL:f.databaseUrl},timeout:20000});
+    for (let i=0;i<2;i++) await promisify(execFile)(process.execPath, [fileURLToPath(new URL("../../src/db/seed.js",import.meta.url))], {env:{...process.env,DATABASE_URL:f.databaseUrl},timeout:20000});
     assert.equal(await f.count("items"), 4); assert.equal(await f.count("tag"), 4);
     assert.equal(await f.count("gates_event"), 0); assert.equal(await f.count("gates"), 0);
     assert.equal((await f.request("/api/items")).data.length, 4);
     const removed = await f.request("/api/items/item-001", { method: "DELETE" });
     assert.equal(removed.status, 200);
-    await promisify(execFile)(process.execPath, [fileURLToPath(new URL("../src/db/seed.js",import.meta.url))], {env:{...process.env,DATABASE_URL:f.databaseUrl},timeout:20000});
+    await promisify(execFile)(process.execPath, [fileURLToPath(new URL("../../src/db/seed.js",import.meta.url))], {env:{...process.env,DATABASE_URL:f.databaseUrl},timeout:20000});
     assert.equal(await f.count("items"), 4); assert.equal(await f.count("tag"), 4);
     assert.equal((await f.request("/api/items")).data.length, 3);
     assert.equal((await f.request("/api/items/item-001")).status, 404);
@@ -496,7 +496,7 @@ test("PostgreSQL：API、位置更新與讀取去重整合", {
     const f = await fixture(t);
     const id = await registerAndRead(f);
     const other = await register(f, { ble_id: "02:00:00:00:de:02", item_name: "保留的物品" });
-    const { createItemService } = await import("../../frontend/public/js/services/item-service.js");
+    const { createItemService } = await import("../../../frontend/public/js/services/item-service.js");
     const service = createItemService({ baseUrl: f.baseUrl });
     await service.reportLost({ item_id: id }); await service.markFound(id);
     const before = {};
@@ -570,7 +570,7 @@ test("PostgreSQL：API、位置更新與讀取去重整合", {
     await migrate(f.pool); await migrate(f.pool);
     assert.equal((await f.request(`/api/items/${item.id}`)).status, 200);
     const { execFile } = await import("node:child_process"); const { promisify } = await import("node:util"); const { fileURLToPath } = await import("node:url");
-    const seed = () => promisify(execFile)(process.execPath, [fileURLToPath(new URL("../src/db/seed.js", import.meta.url))], { env: { ...process.env, DATABASE_URL: f.databaseUrl }, timeout: 20000 });
+    const seed = () => promisify(execFile)(process.execPath, [fileURLToPath(new URL("../../src/db/seed.js", import.meta.url))], { env: { ...process.env, DATABASE_URL: f.databaseUrl }, timeout: 20000 });
     await seed(); await f.request("/api/items/item-001", { method: "DELETE" });
     await seed(); await migrate(f.pool);
     assert.equal((await f.request("/api/items/item-001")).status, 404);
