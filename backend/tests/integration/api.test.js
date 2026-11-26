@@ -328,59 +328,6 @@ test("PostgreSQL：API、位置更新與讀取去重整合", {
     assert.match(options.headers.get("access-control-allow-headers"), /Idempotency-Key/);
   });
 
-  await suite.test("DEMO 指令可完整模擬上報、去重、查詢與遺失回報", async t => {
-    const f = await fixture(t);
-    const { execFile } = await import("node:child_process");
-    const { promisify } = await import("node:util");
-    const { fileURLToPath } = await import("node:url");
-    const result = await promisify(execFile)(process.execPath,
-      [fileURLToPath(new URL("../../../scripts/demo.mjs", import.meta.url)), f.baseUrl],
-      { timeout: 20000, encoding: "utf8" });
-    const data = JSON.parse(result.stdout);
-    assert.equal(data.retry_reason, "event_retry");
-    assert.equal(data.event.read_count, 1);
-    assert.equal(data.item.item_name, "RADAR_DEMO");
-    assert.equal(data.report.already_reported, false);
-    assert.equal((await f.request("/api/items/" + data.event.item_id)).data.status, "lost");
-    const again = await promisify(execFile)(process.execPath,
-      [fileURLToPath(new URL("../../../scripts/demo.mjs", import.meta.url)), f.baseUrl],
-      { timeout: 20000, encoding: "utf8" });
-    const repeated = JSON.parse(again.stdout);
-    assert.equal(repeated.event.item_id, data.item.id);
-    assert.equal(repeated.item.item_name, "RADAR_DEMO");
-    assert.equal(repeated.report.id, data.report.id);
-    assert.equal(repeated.report.already_reported, true);
-    assert.equal(await f.count("items"), 1); assert.equal(await f.count("tag"), 1);
-    assert.equal((await f.pool.query("SELECT COUNT(*)::int AS count FROM tag WHERE ble_id=$1", [event().ble_id])).rows[0].count, 0);
-  });
-  await suite.test("前端 DEMO 上報腳本可切換地點並去重，不自動登記或復活物品", async t => {
-    const f = await fixture(t);
-    const { execFile } = await import("node:child_process");
-    const { promisify } = await import("node:util");
-    const { fileURLToPath } = await import("node:url");
-    const script = fileURLToPath(new URL("../../../scripts/demo-reading.mjs", import.meta.url));
-    const run = scene => promisify(execFile)(process.execPath, [script, scene, f.baseUrl], { timeout: 20000, encoding: "utf8" });
-    const unbound = JSON.parse((await run("library")).stdout);
-    assert.equal(unbound.item_id, null);
-    assert.equal(unbound.retry_reason, "event_retry");
-    assert.equal(unbound.read_count_before_retry, unbound.read_count_after_retry);
-    assert.equal(await f.count("items"), 0); assert.equal(await f.count("gates_event"), 1);
-    const item = await register(f, { item_name: "DEMO 黑色錢包", ble_id: "02:00:00:00:de:02" });
-    f.advance(1000);
-    const moved = JSON.parse((await run("classroom")).stdout);
-    assert.equal(moved.item_id, item.id); assert.equal(moved.location, "教室門口（DEMO）");
-    assert.equal((await f.request(`/api/items/${item.id}`)).data.last_seen.location, moved.location);
-    assert.equal(await f.count("gates_event"), 2); assert.equal(await f.count("lost_reports"), 0);
-    await f.request(`/api/items/${item.id}`, { method: "DELETE" });
-    assert.equal(JSON.parse((await run("library")).stdout).item_id, null);
-    assert.deepEqual((await f.request("/api/items")).data, []);
-    const restored = await register(f, { item_name: "其他測試物品", ble_id: "02:00:00:00:de:02" });
-    assert.equal(restored.id, item.id);
-    const count = await f.count("gates_event");
-    await assert.rejects(run("library"), error => error.code === 1 && /DEMO MAC/.test(error.stderr));
-    assert.equal(await f.count("gates_event"), count);
-  });
-
   await suite.test("五張主表關聯與閘門更新不改變過去事件的位置快照", async t => {
     const f = await fixture(t);
     await register(f);

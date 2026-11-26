@@ -32,7 +32,7 @@ rfid-prototype/
 │   │       ├── ui/           # DOM 與圖示輔助
 │   │       └── utils/        # 格式化
 │   └── tests/
-├── scripts/                  # 檢查、DEMO、單獨啟動前端
+├── scripts/                  # 檢查、單獨啟動前端
 ├── docs/                     # API、資料庫、架構文件與範例
 ├── compose.yaml              # PostgreSQL 容器
 └── package.json
@@ -110,10 +110,6 @@ npm.cmd run test:integration
 ```
 
 整合測試使用獨立 schema，驗證六欄位上傳、前端查詢、回報、去重、並行及升級。實機 ESP32 連線仍須現場測試。
-
-API 啟動後執行 `npm.cmd run demo`，會先登記 RADAR_DEMO，再模擬上報、事件重送、查詢與遺失回報；會實際寫入資料庫及儲存通報。
-
-若要從前端一步步展示登記、查位置、已找到與刪除，使用 `npm.cmd run demo:read`。此指令只模擬感應上報，不自動操作物品狀態。
 
 [API 文件](docs/api.md) · [架構](docs/frontend-architecture.md)
 

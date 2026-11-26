@@ -33,7 +33,7 @@ flowchart LR
 | `backend/src/services/items.js` | 物品登記／再登記、查詢、遺失／已找到及物品軟刪除 |
 | `backend/src/db/` | `pg` 連線池、交易、資料表、升級與種子登記 |
 | `scripts/serve-frontend.mjs` | 單獨啟動前端靜態服務（5500 埠） |
-| `scripts/check.mjs`、`scripts/demo*.mjs` | 全專案靜態檢查與軟體上報示範 |
+| `scripts/check.mjs` | 全專案靜態檢查 |
 
 ## 讀取、位置與去重
 

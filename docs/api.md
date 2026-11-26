@@ -121,9 +121,3 @@ Invoke-RestMethod -Uri http://localhost:3000/api/readings -Method Post -ContentT
 ```
 
 若要在清單看到此測試資料，先在「登記物品」綁定範例 MAC `54:f8:7e:40:fe:bc`，名稱可自行取，例如「我的手機」。上報後以登記名稱或 MAC 搜尋並選取物品，可看到位置及 RSSI；`RADAR_XAIOMI15` 只是此範例的廣播名稱。若先上報再登記，先前感應紀錄也會保留。
-
-## 一次執行軟體 DEMO
-
-API 啟動後執行 `npm.cmd run demo`；其他位址可用 `npm.cmd run demo -- http://電腦IP:3000`。
-這會先登記測試物品 RADAR_DEMO（示例 MAC 02:00:00:00:de:01），再上報、重送同一事件確認去重、查詢物品並建立遺失通報。
-這是實際寫入資料庫的軟體模擬，不代表實體硬體已感應。
