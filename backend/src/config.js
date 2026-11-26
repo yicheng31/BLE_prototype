@@ -10,7 +10,7 @@ export function loadEnvironment() {
 export function loadConfig(env = process.env) {
   function integer(name, fallback, minimum, maximum) {
     const value = env[name] ? Number(env[name]) : fallback;
-    if (!Number.isSafeInteger(value) || value < minimum || value > maximum) throw new Error(`${name} 必須是 ${minimum}～${maximum} 的整數`);
+    if (!Number.isSafeInteger(value) || value < minimum || value > maximum) throw new Error(`${name} 必須是 ${minimum}~${maximum} 的整數`);
     return value;
   }
   const databaseUrl = env.DATABASE_URL || "postgresql://rfid:rfid_dev_password@127.0.0.1:5432/rfid";

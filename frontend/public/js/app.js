@@ -1,63 +1,28 @@
-import { listItems, searchItems, getItem, reportLost } from "./services/item-service.js";
+import { listItems, searchItems, getItem, createItem, reportLost, markFound, deleteItem } from "./services/item-service.js";
+import { $, element } from "./ui/dom.js";
+import { svg, utilityPaths, itemIcon, statusBadge } from "./ui/icons.js";
+import { formatDate } from "./utils/format.js";
 
-const $ = id => document.getElementById(id);
-const state = { items: [], results: [], selectedId: null, selectedItem: null, query: "", reportItemId: null, requestVersion: 0, submitting: false };
-const iconPaths = {
-  backpack: ["M17 13V9a7 7 0 0 1 14 0v4", "M12 13h24v29H12z", "M17 27h14v10H17z", "M12 21h24", "M30 21v5"],
-  laptop: ["M10 8h28v24H10z", "M6 38h36l-4-6H10z", "M19 38h10"],
-  bottle: ["M20 4h8v7h-8z", "M20 11v5l-5 7v17a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V23l-5-7v-5", "M15 28h18", "M20 34h8"],
-  umbrella: ["M6 23a18 18 0 0 1 36 0H6Z", "M24 23v14a5 5 0 0 0 10 0", "M24 5v-2", "M15 23c0-10 4-18 9-18s9 8 9 18"]
-};
-const utilityPaths = {
-  pin: ["M19 10c0 5-7 10-7 10S5 15 5 10a7 7 0 1 1 14 0Z", "M14.5 10a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z"],
-  clock: ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z", "M12 7v5l3 2"],
-  flag: ["M6 21V3m0 1h12l-3 4 3 4H6"],
-  check: ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z", "m8 12 3 3 5-6"]
-};
-
-function element(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined && text !== null) node.textContent = text;
-  return node;
-}
-
-function svg(paths, viewBox = "0 0 24 24") {
-  const node = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  for (const [name, value] of Object.entries({ viewBox, fill: "none", stroke: "currentColor", "stroke-width": "1.7", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" })) node.setAttribute(name, value);
-  for (const d of paths) {
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", d); node.append(path);
-  }
-  return node;
-}
-
-function itemIcon(item) {
-  const kind = Object.hasOwn(iconPaths, item.icon) ? item.icon : "backpack";
-  const wrapper = element("span", `item-icon ${kind}`);
-  wrapper.append(svg(iconPaths[kind], "0 0 48 48"));
-  return wrapper;
-}
-
-function statusBadge(item) { return element("span", `item-status${item.status === "lost" ? " lost" : ""}`, item.status === "lost" ? "遺失中" : "一般"); }
-function formatDate(value) {
-  const date = new Date(value);
-  if (!value || !Number.isFinite(date.getTime())) return "尚無記錄";
-  return new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
-}
+const state = { items: [], results: [], selectedId: null, selectedItem: null, query: "", reportItemId: null, requestVersion: 0, submitting: false, findingItemId: null, registering: false, pendingDeleteId: null, deletingItemId: null };
+const deletedIds = new Set();
+const tabNames = ["lookup", "report", "register"];
+const mutationBusy = () => state.submitting || state.findingItemId !== null || state.registering || state.deletingItemId !== null;
 
 function showError(error) {
   $("global-message").textContent = error instanceof Error ? error.message : "無法完成操作，請稍後再試。";
   $("global-message").hidden = false;
 }
 function clearError() { $("global-message").hidden = true; $("global-message").textContent = ""; }
+function clearFoundMessage() { $("found-message").hidden = true; $("found-message").textContent = ""; }
+function clearRegisterMessage() { $("register-message").hidden = true; $("register-message").textContent = ""; }
+function clearDeleteMessage() { $("delete-message").hidden = true; $("delete-message").textContent = ""; }
 
 function activateTab(name) {
-  const report = name === "report";
-  for (const [tabId, panelId, selected] of [["lookup-tab", "lookup-panel", !report], ["report-tab", "report-panel", report]]) {
-    const tab = $(tabId);
+  for (const tabName of tabNames) {
+    const selected = tabName === name;
+    const tab = $(`${tabName}-tab`);
     tab.classList.toggle("active", selected); tab.setAttribute("aria-selected", String(selected)); tab.tabIndex = selected ? 0 : -1;
-    $(panelId).hidden = !selected;
+    $(`${tabName}-panel`).hidden = !selected;
   }
   clearError();
 }
@@ -65,6 +30,11 @@ function activateTab(name) {
 function renderItems() {
   $("item-list").replaceChildren();
   $("empty-results").hidden = state.results.length > 0;
+  const noRegisteredItems = state.items.length === 0;
+  $("empty-title").textContent = noRegisteredItems ? "還沒有登記的物品" : "沒有找到符合的物品";
+  $("empty-description").textContent = noRegisteredItems ? "先登記物品名稱與標籤的 BLE MAC，讓感應記錄對應到物品清單。" : "試試其他名稱，或確認 BLE MAC 是否正確。";
+  $("open-register").hidden = !noRegisteredItems;
+  $("reset-search").hidden = noRegisteredItems;
   $("clear-search").hidden = !state.query;
   $("items-heading").textContent = state.query ? "搜尋結果" : "已登記物品";
   $("results-summary").textContent = state.query ? `找到 ${state.results.length} 件符合的物品` : `共 ${state.items.length} 件物品，選擇一件查看最後位置`;
@@ -101,22 +71,58 @@ function renderLocation() {
   const time = element("div", "detail-time");
   const timeText = element("div"); timeText.append(element("p", "", "最後觀測時間（台灣時間）"), element("strong", "", formatDate(item.last_seen?.received_at)));
   time.append(svg(utilityPaths.clock), timeText);
-  const button = element("button", "button primary detail-report-button", "回報此物品遺失"); button.type = "button";
-  button.prepend(svg(utilityPaths.flag));
-  button.addEventListener("click", () => { openReport(item); });
+  const lost = item.status === "lost";
+  const findingThisItem = state.findingItemId === String(item.id);
+  const button = element("button", "button primary detail-report-button", lost ? findingThisItem ? "正在更新…" : "已找到" : "回報此物品遺失"); button.type = "button";
+  button.prepend(svg(lost ? utilityPaths.check : utilityPaths.flag));
+  button.disabled = mutationBusy();
+  if (lost) {
+    button.id = "mark-found-button";
+    button.disabled = mutationBusy();
+    button.addEventListener("click", () => { void markItemFound(item); });
+  } else {
+    button.addEventListener("click", () => { openReport(item); });
+  }
   content.append(identity, location, time, element("p", "location-footnote", "顯示資料庫中的最後一筆位置記錄，並非物品目前的即時位置。尚無讀取紀錄時不顯示位置。"), button);
+  const removeButton = element("button", "button delete-item-button", "刪除物品");
+  removeButton.type = "button"; removeButton.disabled = mutationBusy();
+  removeButton.addEventListener("click", () => {
+    if (mutationBusy()) return;
+    state.pendingDeleteId = String(item.id); renderLocation();
+    content.querySelector(".delete-confirm-button")?.focus();
+  });
+  content.append(removeButton);
+  if (state.pendingDeleteId === String(item.id)) {
+    const confirmation = element("div", "delete-confirmation");
+    confirmation.setAttribute("role", "group"); confirmation.setAttribute("aria-label", "確認刪除物品");
+    confirmation.append(element("p", "", `確定刪除「${item.item_name}」嗎？`), element("p", "item-uid", `MAC ${item.ble_id}`),
+      element("p", "", "確認後，物品會從清單與遺失選單隱藏，原紀錄仍會保留。"));
+    const actions = element("div", "delete-actions");
+    const cancel = element("button", "button secondary", "取消");
+    cancel.type = "button"; cancel.disabled = mutationBusy();
+    cancel.addEventListener("click", () => {
+      state.pendingDeleteId = null; renderLocation(); content.querySelector(".delete-item-button")?.focus();
+    });
+    const confirm = element("button", "button delete-confirm-button", state.deletingItemId === String(item.id) ? "正在刪除…" : "確認刪除");
+    confirm.type = "button"; confirm.disabled = mutationBusy();
+    confirm.addEventListener("click", () => { void removeRegisteredItem(item); });
+    actions.append(cancel, confirm); confirmation.append(actions); content.append(confirmation);
+  }
 }
 
 async function selectItem(item) {
+  if (deletedIds.has(String(item.id))) return;
+  const version = state.requestVersion;
   const selectionId = String(item.id); state.selectedId = selectionId;
-  renderItems();
+  state.pendingDeleteId = null; state.selectedItem = null;
+  renderItems(); renderLocation();
   try {
     const selected = await getItem(item.id);
-    if (state.selectedId !== selectionId) return;
+    if (state.selectedId !== selectionId || version !== state.requestVersion || deletedIds.has(selectionId)) return;
     state.selectedItem = selected; renderLocation();
     if (!selected) showError(new Error("找不到這件已登記物品，請重新查詢。"));
   } catch (error) {
-    if (state.selectedId !== selectionId) return;
+    if (state.selectedId !== selectionId || version !== state.requestVersion || deletedIds.has(selectionId)) return;
     state.selectedItem = null; renderLocation(); showError(error);
   }
 }
@@ -140,20 +146,80 @@ function renderReportPreview() {
     text.append(element("p", "", "最後記錄位置"), element("strong", "", item.last_seen?.location || "尚無位置記錄"));
     preview.append(itemIcon(item), text, statusBadge(item));
   }
-  $("report-submit").disabled = state.submitting || !item;
+  $("report-submit").disabled = mutationBusy() || !item;
 }
 
-async function refreshItems(preferredId = state.selectedId) {
+function updateMutationControls() {
+  renderLocation(); renderReportPreview();
+  $("register-submit").disabled = mutationBusy();
+  $("register-submit").textContent = state.registering ? "正在登記…" : "登記並綁定";
+  $("register-name").disabled = state.registering;
+  $("register-mac").disabled = state.registering;
+}
+
+async function refreshItems(preferredId = state.selectedId, { refreshSelected = false } = {}) {
   const version = ++state.requestVersion;
   $("search-button").disabled = true;
   try {
     const [items, results] = await Promise.all([listItems(), searchItems(state.query)]);
     if (version !== state.requestVersion) return;
-    state.items = items; state.results = results;
-    const selected = results.find(item => String(item.id) === preferredId) || results[0] || null;
+    state.items = items.filter(item => !deletedIds.has(String(item.id)));
+    state.results = results.filter(item => !deletedIds.has(String(item.id)));
+    const selected = state.results.find(item => String(item.id) === preferredId) || state.results[0] || null;
     state.selectedId = selected ? String(selected.id) : null; state.selectedItem = selected;
+    if (state.pendingDeleteId !== state.selectedId) state.pendingDeleteId = null;
     renderItems(); renderLocation(); renderReportSelect();
+    if (refreshSelected && selected) {
+      const selectionId = String(selected.id);
+      const detail = await getItem(selected.id);
+      if (version !== state.requestVersion || state.selectedId !== selectionId) return;
+      state.selectedItem = detail; renderLocation();
+      if (!detail) throw new Error("找不到這件已登記物品，請重新查詢。");
+    }
   } finally { if (version === state.requestVersion) $("search-button").disabled = false; }
+}
+
+async function removeRegisteredItem(item) {
+  const id = String(item.id);
+  if (mutationBusy() || state.pendingDeleteId !== id || deletedIds.has(id)) return;
+  clearError(); clearFoundMessage(); clearRegisterMessage(); clearDeleteMessage();
+  state.deletingItemId = id; updateMutationControls();
+  try {
+    await deleteItem(item.id);
+    deletedIds.add(id); ++state.requestVersion;
+    state.items = state.items.filter(row => String(row.id) !== id);
+    state.results = state.results.filter(row => String(row.id) !== id);
+    if (state.selectedId === id) { state.selectedId = null; state.selectedItem = null; }
+    if (String(state.selectedItem?.id) === id) state.selectedItem = null;
+    if (state.reportItemId === id || $("report-item").value === id) {
+      state.reportItemId = null; $("report-item").value = "";
+    }
+    state.pendingDeleteId = null; $("report-confirmation").hidden = true;
+    $("delete-message").textContent = `已刪除「${item.item_name}」，物品已從清單隱藏。`;
+    $("delete-message").hidden = false;
+    renderItems(); renderLocation(); renderReportSelect();
+    try { await refreshItems(state.selectedId, { refreshSelected: true }); }
+    catch { showError(new Error(`「${item.item_name}」已刪除，但其他物品資料更新失敗。請確認後端連線後重新查詢。`)); }
+  } catch (error) { showError(error); }
+  finally { state.deletingItemId = null; updateMutationControls(); }
+}
+
+async function markItemFound(item) {
+  if (item.status !== "lost" || mutationBusy()) return;
+  clearError(); clearFoundMessage(); clearRegisterMessage(); clearDeleteMessage(); $("report-confirmation").hidden = true;
+  state.findingItemId = String(item.id); updateMutationControls();
+  try {
+    const result = await markFound(item.id);
+    $("found-message").textContent = result.already_found
+      ? result.resolved_at
+        ? `「${item.item_name}」的遺失回報已結束，無需重複更新。`
+        : `「${item.item_name}」目前沒有有效的遺失回報，無需重複標示已找到。`
+      : `已將「${item.item_name}」標示為已找到，遺失回報已結束。`;
+    $("found-message").hidden = false;
+    try { await refreshItems(state.selectedId, { refreshSelected: true }); }
+    catch { showError(new Error(`已確認「${item.item_name}」的已找到狀態，但物品清單或明細更新失敗。請確認後端連線後重新查詢。`)); }
+  } catch (error) { showError(error); }
+  finally { state.findingItemId = null; updateMutationControls(); }
 }
 
 function openReport(item) {
@@ -170,15 +236,16 @@ function showConfirmation(report) {
   confirmation.hidden = false;
 }
 
-$("lookup-tab").addEventListener("click", () => activateTab("lookup"));
-$("report-tab").addEventListener("click", () => activateTab("report"));
 $("back-to-lookup").addEventListener("click", () => activateTab("lookup"));
-for (const [index, id] of ["lookup-tab", "report-tab"].entries()) {
-  $(id).addEventListener("keydown", event => {
+for (const [index, name] of tabNames.entries()) {
+  const tab = $(`${name}-tab`);
+  tab.addEventListener("click", () => activateTab(name));
+  tab.addEventListener("keydown", event => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : 1 - index;
-    activateTab(next === 0 ? "lookup" : "report"); $(["lookup-tab", "report-tab"][next]).focus();
+    const next = event.key === "Home" ? 0 : event.key === "End" ? tabNames.length - 1
+      : (index + (event.key === "ArrowRight" ? 1 : -1) + tabNames.length) % tabNames.length;
+    activateTab(tabNames[next]); $(`${tabNames[next]}-tab`).focus();
   });
 }
 $("search-form").addEventListener("submit", async event => {
@@ -191,6 +258,7 @@ async function resetSearch() {
 }
 $("clear-search").addEventListener("click", () => { void resetSearch(); });
 $("reset-search").addEventListener("click", () => { void resetSearch(); });
+$("open-register").addEventListener("click", () => { activateTab("register"); $("register-name").focus(); });
 $("report-item").addEventListener("change", () => {
   state.reportItemId = $("report-item").value || null; $("report-confirmation").hidden = true; renderReportPreview();
 });
@@ -198,16 +266,41 @@ $("report-description").addEventListener("input", () => { $("description-count")
 $("report-form").addEventListener("submit", async event => {
   event.preventDefault(); clearError();
   const item = state.items.find(row => String(row.id) === $("report-item").value);
-  if (!item || state.submitting) return;
+  if (!item || mutationBusy()) return;
+  clearFoundMessage(); clearRegisterMessage(); clearDeleteMessage();
   $("report-confirmation").hidden = true;
   state.submitting = true; $("report-submit").disabled = true; $("report-submit").textContent = "正在儲存…";
+  updateMutationControls();
   try {
     const report = await reportLost({ item_id: item.id, description: $("report-description").value.trim() });
     showConfirmation(report);
     try { await refreshItems(state.selectedId); }
     catch { showError(new Error("已確認資料庫中的遺失回報，但物品清單更新失敗。請確認後端連線後重新查詢。")); }
   } catch (error) { showError(error); }
-  finally { state.submitting = false; $("report-submit").textContent = "儲存遺失回報"; renderReportPreview(); }
+  finally { state.submitting = false; $("report-submit").textContent = "儲存遺失回報"; updateMutationControls(); }
+});
+
+$("register-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (mutationBusy()) return;
+  clearError(); clearFoundMessage(); clearRegisterMessage(); clearDeleteMessage();
+  const input = { item_name: $("register-name").value, ble_id: $("register-mac").value };
+  state.registering = true; updateMutationControls();
+  try {
+    const registered = await createItem(input);
+    deletedIds.delete(String(registered.id));
+    $("register-message").textContent = `已登記「${registered.item_name}」，並綁定 BLE MAC ${registered.ble_id}。`;
+    $("register-message").hidden = false;
+    $("register-form").reset();
+    state.query = ""; $("search-input").value = "";
+    try {
+      await refreshItems(String(registered.id), { refreshSelected: true });
+      activateTab("lookup");
+    } catch {
+      showError(new Error(`「${registered.item_name}」已登記並綁定，但物品清單或明細更新失敗。請確認後端連線後重新查詢。`));
+    }
+  } catch (error) { showError(error); }
+  finally { state.registering = false; updateMutationControls(); }
 });
 
 try { await refreshItems(); }

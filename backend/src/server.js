@@ -20,7 +20,7 @@ try {
     console.error("後端啟動失敗：", error.message);
     void pool.end(); process.exitCode = 1;
   });
-  server.listen(config.port, config.host, () => console.log(`BLE 前端與 API 已啟動：http://localhost:${config.port}`));
+  server.listen(config.port, config.host, () => console.log(`BLE 前端與 API 已啟動:http://localhost:${config.port}`));
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
 } catch (error) {

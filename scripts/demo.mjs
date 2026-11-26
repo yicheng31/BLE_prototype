@@ -12,14 +12,33 @@ async function request(path, body, headers = {}) {
     signal: AbortSignal.timeout(10000)
   });
   const result = await response.json();
-  if (!response.ok) throw new Error(result.error || "HTTP " + response.status);
+  if (!response.ok) {
+    const error = new Error(result.error || "HTTP " + response.status);
+    error.status = response.status;
+    throw error;
+  }
   return result;
 }
-// Creates one explicitly named demo item; it does not alter the upstream sample's real MAC.
+// 上報前先登記專用 DEMO MAC；不使用範例中的真實 MAC。
 const body = { ...sample, ble_id: "02:00:00:00:de:01", item_name: "RADAR_DEMO" };
+async function findDemoItem() {
+  const items = await request("/api/items?q=" + encodeURIComponent(body.ble_id));
+  return items.find(item => item.ble_id.toLowerCase() === body.ble_id);
+}
+let registered = await findDemoItem();
+if (!registered) {
+  try {
+    registered = await request("/api/items", { item_name: "RADAR_DEMO", ble_id: body.ble_id });
+  } catch (error) {
+    if (error.status !== 409) throw error;
+    // 查詢後可能已有其他 DEMO 程序登記同一個 MAC。
+    registered = await findDemoItem();
+    if (!registered) throw error;
+  }
+}
 const first = await request("/api/events", body, { "Idempotency-Key": key });
 const retry = await request("/api/events", body, { "Idempotency-Key": key });
 if (retry.reason !== "event_retry" || retry.read_count !== first.read_count) throw new Error("重送去重失敗");
-const item = await request("/api/items/" + first.item_id);
-const report = await request("/api/items/" + first.item_id + "/lost", { description: "DEMO 測試通報" });
+const item = await request("/api/items/" + registered.id);
+const report = await request("/api/items/" + registered.id + "/lost", { description: "DEMO 測試通報" });
 console.log(JSON.stringify({ note: "軟體模擬 BLE，上報並通報 RADAR_DEMO 遺失", event: first, retry_reason: retry.reason, item, report }, null, 2));

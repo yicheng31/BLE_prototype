@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeReading, toInternalReading } from "../src/readings/normalize.js";
+import { normalizeReading, toInternalReading } from "../../src/validators/reading.js";
 
 const payload = { gate_id: " GATE_01 ", location: " 圖書館 ", item_name: "RADAR_PHONE",
   ble_id: "54:F8:7E:40:FE:BC", rssi: -64, timestamp: 0 };

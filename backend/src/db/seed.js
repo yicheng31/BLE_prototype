@@ -19,7 +19,7 @@ try {
       const existing = (await client.query("SELECT item_id FROM tag WHERE ble_id=$1", [row[2]])).rows[0];
       if (existing?.item_id) continue;
       const result = await client.query("INSERT INTO items (id,item_name,category,icon) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING", [row[0],row[1],row[3],row[4]]);
-      // A reused sample item ID may already have a different historical tag.
+      // 重複使用的示範物品 ID 可能已綁定其他歷史標籤。
       await client.query("INSERT INTO tag (ble_id,item_id) SELECT $1,$2 WHERE NOT EXISTS (SELECT 1 FROM tag WHERE item_id=$2) ON CONFLICT DO NOTHING", [row[2],row[0]]);
       count += result.rowCount;
     }
